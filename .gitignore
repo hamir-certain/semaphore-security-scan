@@ -13,6 +13,7 @@ REPORT.md
 *.txt
 *.md
 !README.md
+!KNOWN_ISSUES.md
 
 # Python
 __pycache__/
