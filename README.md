@@ -50,12 +50,28 @@ Run this pipeline when you need to update the image list for a new Helm chart ve
 
 ## Usage
 
+### Prerequisites
+
+**For scanning private ghcr.io images:**
+
+The Semaphore application images in `ghcr.io/semaphoreio/*` may require authentication. To scan these images:
+
+1. Create a GitHub Personal Access Token with `read:packages` scope
+2. Add the following secrets in your Semaphore project:
+   - `GITHUB_TOKEN` - Your GitHub Personal Access Token
+   - `GITHUB_USERNAME` - Your GitHub username
+
+The pipeline will automatically use these credentials when scanning images from ghcr.io.
+
+**Note:** Public infrastructure images (postgres, redis, rabbitmq, minio, etc.) do not require authentication.
+
 ### Running the Pipelines
 
 **Security Scan Pipeline** (`.semaphore/semaphore.yml`):
 - This is the main pipeline for regular security scanning
 - Run manually or on a schedule (recommended: weekly)
 - Scans all 43 images in parallel
+- Requires GitHub credentials for private images (see Prerequisites)
 
 **Extract Images Pipeline** (`.semaphore/extract-images.yml`):
 - Run this when a new Semaphore Helm chart version is released
