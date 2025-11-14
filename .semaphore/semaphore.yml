@@ -10,6 +10,15 @@ blocks:
       prologue:
         commands:
           - checkout
+          # Install Trivy once for all jobs
+          - echo "Installing Trivy..."
+          - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /tmp
+          - export PATH="/tmp:$PATH"
+          - trivy --version
+          # Pre-download vulnerability database to avoid timeouts in individual jobs
+          - echo "Pre-downloading Trivy vulnerability database..."
+          - trivy image --download-db-only
+          - echo "Trivy DB downloaded successfully"
       jobs:
         - name: Scan Image
           matrix:
@@ -62,16 +71,10 @@ blocks:
                 - "curlimages/curl:latest"
                 - "docker.io/erlang:26"
           commands:
-            # Install Trivy
-            - echo "Installing Trivy..."
-            - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /tmp
+            # Trivy is already installed in prologue, just ensure PATH
             - export PATH="/tmp:$PATH"
 
-            # Verify Trivy installation
-            - trivy --version
-
             # Setup authentication for private registries (ghcr.io)
-            # For public images in ghcr.io/semaphoreio, we can use anonymous access with proper headers
             # If images are private, set GITHUB_TOKEN and GITHUB_USERNAME as Semaphore secrets
             - |
               if [[ -n "${GITHUB_TOKEN:-}" ]] && [[ -n "${GITHUB_USERNAME:-}" ]]; then
@@ -92,7 +95,8 @@ blocks:
             # - Scan for vulnerabilities in OS packages and application dependencies
             # - Output in markdown format for easy aggregation
             # - Use --image-src remote to pull images directly from registry
-            - trivy image --image-src remote --severity HIGH,CRITICAL --format json --output "scan-results/${SAFE_IMAGE_NAME}.json" "$IMAGE"
+            # - Skip DB update since we downloaded it in prologue
+            - trivy image --image-src remote --skip-db-update --severity HIGH,CRITICAL --format json --output "scan-results/${SAFE_IMAGE_NAME}.json" "$IMAGE"
 
             # Generate markdown report from JSON
             - |
@@ -106,7 +110,7 @@ blocks:
               MARKDOWN_EOF
 
             # Add vulnerability table
-            - trivy image --image-src remote --severity HIGH,CRITICAL --format table "$IMAGE" >> "scan-results/${SAFE_IMAGE_NAME}.md"
+            - trivy image --image-src remote --skip-db-update --severity HIGH,CRITICAL --format table "$IMAGE" >> "scan-results/${SAFE_IMAGE_NAME}.md"
 
             # Display summary
             - echo "Scan complete for $IMAGE"
