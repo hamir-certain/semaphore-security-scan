@@ -91,11 +91,8 @@ python3 scripts/extract-images.py semaphore/values.yaml
 #### Scan a Single Image
 
 ```bash
-# Install Trivy (Ubuntu/Debian)
-wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-sudo apt-get update
-sudo apt-get install trivy
+# Install Trivy
+curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
 # Scan an image
 trivy image --severity HIGH,CRITICAL ghcr.io/semaphoreio/auth:570873cccc0c443e433697a0efb7a3f33d6f3ecd

@@ -64,10 +64,8 @@ blocks:
           commands:
             # Install Trivy
             - echo "Installing Trivy..."
-            - wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-            - echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-            - sudo apt-get update
-            - sudo apt-get install -y trivy
+            - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /tmp
+            - export PATH="/tmp:$PATH"
 
             # Verify Trivy installation
             - trivy --version
