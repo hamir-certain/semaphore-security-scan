@@ -5,10 +5,14 @@ semaphore/
 # Scan results
 scan-results/
 all-scan-results/
+images-list.txt
+REPORT.md
+
+# Trivy output files
 *.json
 *.txt
-security-report.md
-images-list.txt
+*.md
+!README.md
 
 # Python
 __pycache__/

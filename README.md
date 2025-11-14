@@ -35,13 +35,13 @@ The pipeline consists of three blocks:
 - Each job independently:
   - Installs Trivy
   - Scans assigned image for HIGH/CRITICAL vulnerabilities
-  - Generates JSON and text reports
-  - Uploads results as artifacts
+  - Generates individual markdown report
+  - Uploads markdown report as artifact
 
 ### 3. Generate Security Report
-- Aggregates all scan results
-- Creates a comprehensive Markdown report
-- Highlights images requiring attention
+- Pulls all individual markdown reports
+- Aggregates them into a single `REPORT.md` file
+- Adds summary header and footer
 - Provides remediation recommendations
 
 ## Usage
@@ -57,14 +57,14 @@ The pipeline runs automatically on:
 
 After the pipeline completes:
 
-1. **Individual Scan Results**: Download artifacts from each scan job
-   - JSON format: `<image-name>.json` - for automated processing
-   - Text format: `<image-name>.txt` - for human review
+1. **Individual Scan Results**: Download markdown artifacts from each scan job
+   - Markdown format: `<image-name>.md` - vulnerability details for each image
 
-2. **Security Report**: Download the aggregated `security-report.md` artifact
-   - Summary statistics
-   - Vulnerability breakdown by image
-   - Prioritized remediation recommendations
+2. **Aggregated Security Report**: Download the final `REPORT.md` artifact
+   - Combined report with all scanned images
+   - Summary header with scan metadata
+   - Individual image sections with vulnerability details
+   - Recommendations and next steps
 
 ### Local Development
 

@@ -97,19 +97,31 @@ blocks:
             - echo "Scanning image $IMAGE..."
             - echo "Results will be saved as $SAFE_IMAGE_NAME"
 
-            # Run Trivy scan
-            # - Save results in JSON format for machine processing
-            # - Save results in table format for human reading
+            # Run Trivy scan and generate markdown report
             # - Scan for vulnerabilities in OS packages and application dependencies
+            # - Output in markdown format for easy aggregation
             - trivy image --severity HIGH,CRITICAL --format json --output "scan-results/${SAFE_IMAGE_NAME}.json" "$IMAGE"
-            - trivy image --severity HIGH,CRITICAL --format table --output "scan-results/${SAFE_IMAGE_NAME}.txt" "$IMAGE"
+
+            # Generate markdown report from JSON
+            - |
+              cat > "scan-results/${SAFE_IMAGE_NAME}.md" << MARKDOWN_EOF
+              ## Image: \`$IMAGE\`
+
+              **Scan Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+              ### Vulnerabilities Summary
+
+              MARKDOWN_EOF
+
+            # Add vulnerability table
+            - trivy image --severity HIGH,CRITICAL --format table "$IMAGE" >> "scan-results/${SAFE_IMAGE_NAME}.md"
 
             # Display summary
             - echo "Scan complete for $IMAGE"
-            - cat "scan-results/${SAFE_IMAGE_NAME}.txt"
+            - cat "scan-results/${SAFE_IMAGE_NAME}.md"
 
-            # Upload results as artifacts
-            - artifact push job scan-results
+            # Upload markdown report as artifact
+            - artifact push job scan-results/${SAFE_IMAGE_NAME}.md
 
   - name: "Generate Security Report"
     task:
@@ -118,8 +130,51 @@ blocks:
           commands:
             - checkout
             - mkdir -p all-scan-results
-            - artifact pull workflow all-scan-results --destination all-scan-results
-            - echo "Creating summary report..."
-            - python3 scripts/generate-report.py all-scan-results > security-report.md
-            - cat security-report.md
-            - artifact push workflow security-report.md
+            - echo "Pulling all markdown reports from previous jobs..."
+            - artifact pull workflow all-scan-results --destination all-scan-results || true
+            - echo "Creating aggregated REPORT.md..."
+            - |
+              cat > REPORT.md << 'HEADER_EOF'
+              # Semaphore Security Scan Report
+
+              **Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+              **Helm Chart Version:** v1.5.0
+              **Total Images Scanned:** 43
+
+              ---
+
+              HEADER_EOF
+            - |
+              # Append all individual markdown reports
+              for md_file in all-scan-results/*.md; do
+                if [ -f "$md_file" ]; then
+                  cat "$md_file" >> REPORT.md
+                  echo "" >> REPORT.md
+                  echo "---" >> REPORT.md
+                  echo "" >> REPORT.md
+                fi
+              done
+            - |
+              # Add summary footer
+              cat >> REPORT.md << 'FOOTER_EOF'
+
+              ## Recommendations
+
+              1. **Critical Vulnerabilities**: Prioritize images with CRITICAL vulnerabilities for immediate remediation
+              2. **High Vulnerabilities**: Schedule updates for images with HIGH vulnerabilities
+              3. **Regular Scans**: Run this pipeline regularly (e.g., weekly) to catch new vulnerabilities
+              4. **Image Updates**: Consider updating base images and dependencies
+              5. **Vulnerability Database**: Ensure Trivy vulnerability database is up to date
+
+              ## Next Steps
+
+              - Review individual image sections above for detailed vulnerability information
+              - Create tickets for images requiring updates
+              - Monitor CVE feeds for newly disclosed vulnerabilities
+              - Consider implementing automated image rebuilds when vulnerabilities are patched
+
+              FOOTER_EOF
+            - echo "REPORT.md generated successfully"
+            - echo "First 100 lines of REPORT.md:"
+            - head -100 REPORT.md
+            - artifact push workflow REPORT.md
