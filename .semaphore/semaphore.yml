@@ -5,27 +5,11 @@ agent:
     type: s1-kubernetes
 
 blocks:
-  - name: "Extract Images from Helm Chart"
-    task:
-      jobs:
-        - name: Extract Image List
-          commands:
-            - checkout
-            - echo "Downloading Semaphore Helm chart v1.5.0..."
-            - curl -L https://github.com/semaphoreio/semaphore/releases/download/v1.5.0/semaphore-v1.5.0.tgz -o semaphore-v1.5.0.tgz
-            - tar -xzf semaphore-v1.5.0.tgz
-            - echo "Extracting images from values.yaml..."
-            - python3 scripts/extract-images.py semaphore/values.yaml > images-list.txt
-            - echo "Images extracted successfully"
-            - cat images-list.txt
-            - artifact push workflow images-list.txt
-
   - name: "Trivy Security Scan"
     task:
       prologue:
         commands:
           - checkout
-          - artifact pull workflow images-list.txt
       jobs:
         - name: Scan Image
           matrix:

@@ -23,14 +23,18 @@ This repository contains a Semaphore CI/CD pipeline that automatically scans all
 
 ## Pipeline Architecture
 
-The pipeline consists of three blocks:
+There are two separate pipelines:
 
-### 1. Extract Images from Helm Chart
-- Downloads Semaphore Helm chart v1.5.0
+### Pipeline 1: Extract Images (`.semaphore/extract-images.yml`)
+Run this pipeline when you need to update the image list for a new Helm chart version:
+- Downloads Semaphore Helm chart
 - Extracts all container image references using Python script
-- Generates a complete image list
+- Generates a complete image list as artifact
+- Use the output to update the job matrix in the security scan pipeline
 
-### 2. Trivy Security Scan (Parallel)
+### Pipeline 2: Security Scan (`.semaphore/semaphore.yml`)
+
+#### Block 1: Trivy Security Scan (Parallel)
 - Uses job matrix to create 43 parallel jobs (one per image)
 - Each job independently:
   - Installs Trivy
@@ -38,7 +42,7 @@ The pipeline consists of three blocks:
   - Generates individual markdown report
   - Uploads markdown report as artifact
 
-### 3. Generate Security Report
+#### Block 2: Generate Security Report
 - Pulls all individual markdown reports
 - Aggregates them into a single `REPORT.md` file
 - Adds summary header and footer
@@ -46,12 +50,17 @@ The pipeline consists of three blocks:
 
 ## Usage
 
-### Running the Pipeline
+### Running the Pipelines
 
-The pipeline runs automatically on:
-- Push to main branch
-- Pull requests
-- Manual trigger via Semaphore UI
+**Security Scan Pipeline** (`.semaphore/semaphore.yml`):
+- This is the main pipeline for regular security scanning
+- Run manually or on a schedule (recommended: weekly)
+- Scans all 43 images in parallel
+
+**Extract Images Pipeline** (`.semaphore/extract-images.yml`):
+- Run this when a new Semaphore Helm chart version is released
+- Downloads and extracts image list
+- Use the output to update the matrix in the security scan pipeline
 
 ### Viewing Results
 
@@ -96,36 +105,39 @@ trivy image --severity HIGH,CRITICAL ghcr.io/semaphoreio/auth:570873cccc0c443e43
 
 When a new version of the Semaphore Helm chart is released:
 
-1. **Update the Pipeline Configuration**:
-   - Edit `.semaphore/semaphore.yml`
-   - Update the Helm chart download URL in the "Extract Images" block
-   - Change version from `v1.5.0` to the new version
-
-2. **Extract New Image List**:
-   ```bash
-   # Download new chart
-   curl -L https://github.com/semaphoreio/semaphore/releases/download/vX.Y.Z/semaphore-vX.Y.Z.tgz -o semaphore.tgz
-   tar -xzf semaphore.tgz
-
-   # Extract images
-   python3 scripts/extract-images.py semaphore/values.yaml > new-images.txt
-   ```
-
-3. **Update Job Matrix**:
-   - Replace the `values` list in the "Trivy Security Scan" job matrix
-   - Copy image names from the extraction output
+1. **Update Extract Images Pipeline**:
+   - Edit `.semaphore/extract-images.yml`
+   - Update the Helm chart download URL (change version from `v1.5.0` to the new version)
    - Commit and push changes
 
-4. **Alternative: Automated Update** (Future Enhancement):
-   - Create a script to automatically update the matrix from `images-list.txt`
-   - Use Semaphore's parameterized builds to specify Helm chart version
+2. **Run Extract Images Pipeline**:
+   - Trigger the extract images pipeline in Semaphore UI
+   - Download the `images-list.txt` artifact
+
+3. **Update Security Scan Pipeline**:
+   - Edit `.semaphore/semaphore.yml`
+   - Replace the `values` list in the "Trivy Security Scan" job matrix
+   - Copy image names from `images-list.txt`
+   - Update the total count in the README if the number of images changed
+   - Commit and push changes
+
+**Alternative: Local Extraction**
+```bash
+# Download new chart
+curl -L https://github.com/semaphoreio/semaphore/releases/download/vX.Y.Z/semaphore-vX.Y.Z.tgz -o semaphore.tgz
+tar -xzf semaphore.tgz
+
+# Extract images
+python3 scripts/extract-images.py semaphore/values.yaml > new-images.txt
+```
 
 ## Repository Structure
 
 ```
 .
 ├── .semaphore/
-│   └── semaphore.yml          # Main pipeline configuration
+│   ├── semaphore.yml          # Main security scan pipeline
+│   └── extract-images.yml     # Image extraction pipeline
 ├── scripts/
 │   ├── extract-images.py      # Extract images from Helm chart
 │   └── generate-report.py     # Generate security summary report
