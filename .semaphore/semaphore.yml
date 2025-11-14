@@ -2,8 +2,7 @@ version: v1.0
 name: Semaphore Security Scan Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
 
 blocks:
   - name: "Extract Images from Helm Chart"
