@@ -80,16 +80,28 @@ The pipeline will automatically use these credentials when scanning images from 
 
 ### Viewing Results
 
-After the pipeline completes:
+After the pipeline completes, collect the scan results using the provided script:
 
-1. **Individual Scan Results**: Download markdown artifacts from each scan job
-   - Markdown format: `<image-name>.md` - vulnerability details for each image
+```bash
+# Make sure sem CLI is connected
+sem connect semaphore.hamir.online <your-api-token>
 
-2. **Aggregated Security Report**: Download the final `REPORT.md` artifact
-   - Combined report with all scanned images
-   - Summary header with scan metadata
-   - Individual image sections with vulnerability details
-   - Recommendations and next steps
+# Collect results from job logs (recommended method)
+./scripts/collect-scan-results.sh <pipeline-id> REPORT.md
+```
+
+Example:
+```bash
+./scripts/collect-scan-results.sh cb12d54a-f1aa-4476-89b4-320109be4237
+```
+
+This will:
+1. Fetch logs from all 44 scan jobs
+2. Extract the Trivy scan results from each log
+3. Generate a comprehensive `REPORT.md` with all vulnerability information
+4. Include recommendations and next steps
+
+**Note:** Due to limitations with workflow-level artifact sharing in matrix jobs, we collect results from job logs instead of artifacts. See `KNOWN_ISSUES.md` for details.
 
 ### Local Development
 
