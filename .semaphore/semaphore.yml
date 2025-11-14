@@ -116,8 +116,8 @@ blocks:
             - echo "Scan complete for $IMAGE"
             - cat "scan-results/${SAFE_IMAGE_NAME}.md"
 
-            # Upload markdown report as artifact
-            - artifact push job scan-results/${SAFE_IMAGE_NAME}.md
+            # Upload markdown report as workflow artifact for final aggregation
+            - artifact push workflow scan-results/${SAFE_IMAGE_NAME}.md
 
   - name: "Generate Security Report"
     task:
@@ -125,23 +125,25 @@ blocks:
         - name: Aggregate Results
           commands:
             - checkout
-            - mkdir -p all-scan-results
+            - mkdir -p all-scan-results .semaphore
             - echo "Pulling all markdown reports from previous jobs..."
             - artifact pull workflow all-scan-results --destination all-scan-results || true
             - echo "Creating aggregated REPORT.md..."
             - |
-              cat > REPORT.md << 'HEADER_EOF'
+              # Create header with evaluated date
+              cat > REPORT.md << HEADER_EOF
               # Semaphore Security Scan Report
 
               **Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
               **Helm Chart Version:** v1.5.0
-              **Total Images Scanned:** 43
+              **Total Images Scanned:** 44
 
               ---
 
               HEADER_EOF
             - |
               # Append all individual markdown reports
+              echo "Found $(ls -1 all-scan-results/*.md 2>/dev/null | wc -l) scan reports"
               for md_file in all-scan-results/*.md; do
                 if [ -f "$md_file" ]; then
                   cat "$md_file" >> REPORT.md
@@ -173,4 +175,6 @@ blocks:
             - echo "REPORT.md generated successfully"
             - echo "First 100 lines of REPORT.md:"
             - head -100 REPORT.md
-            - artifact push workflow REPORT.md
+            # Copy to .semaphore directory and push both
+            - cp REPORT.md .semaphore/REPORT.md
+            - artifact push workflow -f -d .semaphore/REPORT.md REPORT.md
